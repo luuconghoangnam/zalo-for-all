@@ -33,7 +33,7 @@ if (!fs.existsSync(nodeModules)) {
 }
 
 execSync(
-  `npx node-gyp configure --target=${ELECTRON_VERSION} --arch=x64 --dist-url=https://www.electronjs.org/headers build`,
+  `node-gyp configure --target=${ELECTRON_VERSION} --arch=x64 --dist-url=https://www.electronjs.org/headers build`,
   { cwd: libDir, stdio: 'ignore' }
 );
 

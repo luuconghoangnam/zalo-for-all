@@ -74,11 +74,8 @@ async function main() {
     //       icon. Result: two tray icons, with the Zalo one looking
     //       wrong.
     // ---------------------------------------------------------------
-    if (content.includes('case"LINUX":return 25;')) {
-      content = content.replace(/case"LINUX":return 25;/g, 'case"LINUX":return 23;');
-      fs.writeFileSync(mainJsPath, content, 'utf8');
-      logger.dim('Patched platform ID (25 -> 23, macOS)');
-    }
+    // Keep platform ID 25 (Linux) to prevent macOS codesign/keychain errors and re-login stalls.
+    logger.dim('Keeping native Linux platform ID (25)');
   }
 
   logger.success('db-cross-v4 built and installed');

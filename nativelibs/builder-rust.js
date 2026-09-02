@@ -11,6 +11,7 @@
 
 const { execSync } = require('child_process');
 const fs = require('fs-extra');
+const os = require('os');
 const path = require('path');
 const logger = require('../scripts/utils/logger');
 
@@ -18,15 +19,20 @@ const PACKAGE_JSON = require(path.join(__dirname, '..', 'package.json'));
 const ELECTRON_VERSION = PACKAGE_JSON.devDependencies.electron.replace(/^\^/, '');
 
 const libDir = process.argv[2];
-const buildDir = path.join(libDir, 'target');
+const buildDir = path.join(os.tmpdir(), 'zalo-for-all-cargo', path.basename(libDir));
 const releaseBinary = path.join(buildDir, 'release');
+const targetReleaseBinary = path.join(libDir, 'target', 'release');
 
 logger.dim(`Lib dir: ${libDir}`);
 logger.dim(`Electron: ${ELECTRON_VERSION}`);
 
 execSync(
   `cargo build --release`,
-  { cwd: libDir, stdio: 'ignore' }
+  {
+    cwd: libDir,
+    stdio: 'ignore',
+    env: { ...process.env, CARGO_TARGET_DIR: buildDir }
+  }
 );
 
 const files = fs.readdirSync(releaseBinary).filter(f => f.endsWith('.so'));
@@ -43,5 +49,13 @@ for (const file of files) {
 }
 
 const nodeFiles = fs.readdirSync(releaseBinary).filter(f => f.endsWith('.node'));
+fs.ensureDirSync(targetReleaseBinary);
+for (const file of nodeFiles) {
+  fs.copyFileSync(
+    path.join(releaseBinary, file),
+    path.join(targetReleaseBinary, file)
+  );
+}
+
 const binaryPath = path.join(releaseBinary, nodeFiles[0]);
 logger.dim(`Binary: ${nodeFiles[0]} (${(fs.statSync(binaryPath).size / 1024).toFixed(1)} KB)`);

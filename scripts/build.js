@@ -100,11 +100,11 @@ async function build(buildName = '', outputSuffix = '') {
       }
 
       artifactName = `Zalo-${ZALO_VERSION}+ZaDark-${zadarkVersion}-${commitHash}.AppImage`;
-      buildCommand = `npx electron-builder --linux --config.linux.artifactName="${artifactName}" -c.extraMetadata.version=${ZALO_VERSION} --publish=never`;
+      buildCommand = `node ./node_modules/electron-builder/cli.js --linux --config.linux.artifactName="${artifactName}" -c.extraMetadata.version=${ZALO_VERSION} --publish=never`;
       logger.info(`Building ${buildName} with Zalo: ${ZALO_VERSION}, ZaDark: ${zadarkVersion}, Commit: ${commitHash}`);
     } else {
       artifactName = `Zalo-${ZALO_VERSION}-${commitHash}.AppImage`;
-      buildCommand = `npx electron-builder --linux --config.linux.artifactName="${artifactName}" -c.extraMetadata.version=${ZALO_VERSION} --publish=never`;
+      buildCommand = `node ./node_modules/electron-builder/cli.js --linux --config.linux.artifactName="${artifactName}" -c.extraMetadata.version=${ZALO_VERSION} --publish=never`;
       logger.info(`Building ${buildName} with Zalo: ${ZALO_VERSION}, Commit: ${commitHash}`);
     }
     // Write build-info.json to the app directory so the AppImage will contain its metadata

@@ -133,14 +133,14 @@ async function buildZaDarkAssets() {
   try {
     // Install dependencies
     logger.dim('Installing dependencies...');
-    execSync('npm install --silent', {
+    execSync('npm install --silent --ignore-scripts', {
       cwd: ZADARK_DIR,
       stdio: 'pipe'
     });
 
     // Build PC version
     logger.dim('Running gulp build...');
-    execSync('npx gulp build', {
+    execSync('node ./node_modules/gulp/bin/gulp.js build', {
       cwd: ZADARK_DIR,
       stdio: 'pipe',
       env: { ...process.env, NODE_ENV: 'production' }
