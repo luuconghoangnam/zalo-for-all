@@ -23,13 +23,13 @@
   ],
   "author": "doandat943",
   "license": "MIT",
-  "homepage": "https://github.com/doandat943/zalo-for-linux",
+  "homepage": "https://github.com/luuconghoangnam/zalo-for-all",
   "repository": {
     "type": "git",
-    "url": "https://github.com/doandat943/zalo-for-linux.git"
+    "url": "https://github.com/luuconghoangnam/zalo-for-all.git"
   },
   "bugs": {
-    "url": "https://github.com/doandat943/zalo-for-linux/issues"
+    "url": "https://github.com/luuconghoangnam/zalo-for-all/issues"
   },
   "devDependencies": {
     "@electron/asar": "^4.0.1",
