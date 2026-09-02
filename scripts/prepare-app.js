@@ -195,6 +195,9 @@ async function extractAppAsar() {
 
   const { main: patchShellOpenLinux } = require('./patches/patch-shell-open-linux');
   await patchShellOpenLinux();
+
+  const { main: patchEmojiReactions } = require('./patches/patch-emoji-reactions');
+  await patchEmojiReactions();
 }
 
 function commandExists(command) {
