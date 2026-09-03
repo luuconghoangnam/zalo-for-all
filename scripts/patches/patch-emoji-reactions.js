@@ -49,6 +49,7 @@ async function main() {
         walkDir(fullPath);
       } else if (f.endsWith('.js') && !f.endsWith('.bak')) {
         let content = fs.readFileSync(fullPath, 'utf8');
+        let patched = false;
 
         if (content.includes('reactionMsgInfo') || content.includes('reaction_setting')) {
           const emojiMap = {};
@@ -73,8 +74,6 @@ async function main() {
             .map(rt => ({ rType: rt, rIcon: emojiMap[rt] }));
           const orderedJson = JSON.stringify(orderedArray);
 
-          let patched = false;
-
           // 1. Patch default array fallback: reactionMsgInfo:[{rType:0...}]
           const fallbackKey = 'reactionMsgInfo:[{rType:0,rIcon:":>"';
           let fbIdx = content.indexOf(fallbackKey);
@@ -90,14 +89,67 @@ async function main() {
           // 2. Patch server override: d.default.reactionMsgInfo=t.setttings.features.reaction_setting.reactionMsgInfo
           const overrideKey = 'd.default.reactionMsgInfo=t.setttings.features.reaction_setting.reactionMsgInfo';
           if (content.includes(overrideKey)) {
-            content = content.replace(overrideKey, `d.default.reactionMsgInfo=${orderedJson}`);
+            content = content.replace(overrideKey, () => `d.default.reactionMsgInfo=${orderedJson}`);
             patched = true;
           }
 
-          if (patched) {
+          // 3. Dynamic adaptive positioning for reaction popover
+          const refTarget = 'ref:e=>this._eList=e';
+          const refReplacement = 'ref:e=>{this._eList=e;e&&setTimeout((()=>{try{let p=e.parentElement;if(!p)return;let r=p.getBoundingClientRect(),w=window.innerWidth,s=p.closest(".chat-message-list")||p.closest(".chat-view")||p.closest("#chat-box")||document.body,c=s.getBoundingClientRect();w-r.left<280||c.right-r.left<280?(p.style.setProperty("left","auto","important"),p.style.setProperty("right","0px","important")):(p.style.setProperty("left","0px","important"),p.style.setProperty("right","auto","important"));r.top<270?(p.style.setProperty("top","35px","important"),p.style.setProperty("bottom","auto","important")):(p.style.setProperty("top","-265px","important"),p.style.setProperty("bottom","auto","important"))}catch(_){}}),0)}';
+          if (content.includes(refTarget)) {
+            content = content.replace(refTarget, () => refReplacement);
+            patched = true;
+          }
+        }
+
+        // Anti-Recall patch: Keep recalled messages visible with [Đã thu hồi] tag
+        const recallTargets = [
+          {
+            target: ':t.message="[Tin nhắn đã được thu hồi]"',
+            replacement: ':t.isRecalled=true,t.message=typeof t.message==="string"?(t.message.startsWith("[Đã thu hồi]")?t.message:"[Đã thu hồi] "+t.message):t.message'
+          },
+          {
+            target: ':t.message="[Tin nhắn đã bị xóa]"',
+            replacement: ':t.isRecalled=true,t.message=typeof t.message==="string"?(t.message.startsWith("[Đã xóa]")?t.message:"[Đã xóa] "+t.message):t.message'
+          },
+          {
+            target: 't.type==s.FetchActions.DELETE_EVERYONE?(n=c.default.convertToDelEveryone(n),n.uidSenderDel=t.payload.uidSenderDel):"0"!==n.fromUid&&(n=c.default.convertToRecalled(n))',
+            replacement: '"0"!==n.fromUid?(n=c.default.convertToRecalled(n),n.msgType=e.msgType):t.type==s.FetchActions.DELETE_EVERYONE?(n=c.default.convertToDelEveryone(n),n.uidSenderDel=t.payload.uidSenderDel):(n=c.default.convertToRecalled(n))'
+          },
+          {
+            target: 'r.c.equal(n.globalMsgId,e.msgId)?("0"!==e.fromUid&&h.default.convertToRecalled(e),e.msgType=n.msgType,e.v=n.v,i=e.sendDttm)',
+            replacement: 'r.c.equal(n.globalMsgId,e.msgId)?("0"!==e.fromUid?h.default.convertToRecalled(e):(e.msgType=n.msgType,e.v=n.v,i=e.sendDttm))'
+          },
+          {
+            target: 'a.msgType=h.MSG_UNDO,a.originMsgType="chat.undo","0"!==a.fromUid&&(a=b.default.convertToRecalled(a))',
+            replacement: 'if("0"!==a.fromUid){a=b.default.convertToRecalled(a);n.Core.Message.insert(a,{replace:!0}).catch(()=>{});continue}a.msgType=h.MSG_UNDO,a.originMsgType="chat.undo"'
+          },
+          // Anti-Vanish (Chặn tin nhắn tự xóa)
+          {
+            target: 'async vanishMessages(e,t,n=(()=>{})){if(!t.length)return;',
+            replacement: 'async vanishMessages(e,t,n=(()=>{})){return;if(!t.length)return;'
+          },
+          {
+            target: 'const{key:o,conversationId:l,isTTL:c,batch:d}=t;l&&v.a.clearCache(l)',
+            replacement: 'const{key:o,conversationId:l,isTTL:c,batch:d}=t;if(c)return a({ok:!0,value:[]});l&&v.a.clearCache(l)'
+          }
+        ];
+
+        for (const rt of recallTargets) {
+          if (content.includes(rt.target)) {
+            content = content.replace(rt.target, () => rt.replacement);
+            patched = true;
+          }
+        }
+
+        if (patched) {
+          try {
+            new Function(content);
             fs.writeFileSync(fullPath, content, 'utf8');
-            logger.success(`Patched 82 emoji reactions in JS: ${path.basename(fullPath)}`);
+            logger.success(`Patched JS: ${path.basename(fullPath)}`);
             jsFilesPatched++;
+          } catch (e) {
+            logger.error(`Syntax error after patching ${path.basename(fullPath)}: ${e.message}`);
           }
         }
       }
@@ -112,7 +164,7 @@ async function main() {
 
   // 2. Patch CSS files
   const cssOverride = `
-/* === ZALO 82 EMOJI GRID WINDOWS/LINUX PATCH === */
+/* === ZALO 82 EMOJI GRID WINDOWS/LINUX PATCH V6 === */
 
 /* 1. Reset animation and opacity for reaction popup icons */
 .emoji-list-wrapper .reaction-emoji-icon,
@@ -124,67 +176,76 @@ async function main() {
     visibility: visible !important;
 }
 
-/* 2. Quick Reaction Hover Bar (Single Horizontal Line of 6 Icons) */
-.emoji-list-wrapper:not(.show-elist) .reaction-emoji-list {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
+/* 2. Full 82 Emoji Reaction Grid (6 Icons per Row, perfectly balanced & symmetrical) */
+.emoji-list-wrapper .reaction-emoji-list,
+.message-reaction-container-v2 .emoji-list-wrapper .reaction-emoji-list {
+    display: grid !important;
+    grid-template-columns: repeat(6, 36px) !important;
+    gap: 4px !important;
+    justify-content: center !important;
+    align-content: start !important;
     width: auto !important;
-    max-width: none !important;
-    height: 36px !important;
-    border-radius: 20px !important;
-    padding: 0 6px !important;
-    overflow: visible !important;
-}
-
-.emoji-list-wrapper:not(.show-elist) .reaction-emoji-icon {
-    display: inline-flex !important;
-    flex: 0 0 24px !important;
-    width: 24px !important;
-    height: 24px !important;
-    margin: 0 3px !important;
-    position: relative !important;
-}
-
-/* 3. Expanded Reaction Grid (6 Icons per Row) */
-.emoji-list-wrapper.show-elist .reaction-emoji-list {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: wrap !important;
-    align-content: flex-start !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    width: 252px !important;
-    max-width: 252px !important;
-    min-width: 252px !important;
-    max-height: 200px !important;
+    max-width: fit-content !important;
+    min-width: unset !important;
+    max-height: 245px !important;
     overflow-y: auto !important;
     overflow-x: hidden !important;
-    padding: 6px !important;
+    padding: 8px !important;
+    padding-bottom: 24px !important;
     border-radius: 12px !important;
     background-color: var(--reaction-background, #22262B) !important;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5) !important;
     border: 1px solid rgba(255, 255, 255, 0.15) !important;
     box-sizing: border-box !important;
+    scrollbar-width: thin !important;
 }
 
-.emoji-list-wrapper.show-elist .reaction-emoji-icon {
-    display: inline-flex !important;
-    flex: 0 0 36px !important;
+.emoji-list-wrapper .reaction-emoji-list::-webkit-scrollbar,
+.message-reaction-container-v2 .emoji-list-wrapper .reaction-emoji-list::-webkit-scrollbar {
+    width: 4px !important;
+}
+
+.emoji-list-wrapper .reaction-emoji-list::-webkit-scrollbar-thumb,
+.message-reaction-container-v2 .emoji-list-wrapper .reaction-emoji-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.25) !important;
+    border-radius: 4px !important;
+}
+
+.emoji-list-wrapper .reaction-emoji-icon:not(:has(.clear-react)),
+.message-reaction-container-v2 .emoji-list-wrapper .reaction-emoji-icon:not(:has(.clear-react)) {
+    display: flex !important;
     width: 36px !important;
-    max-width: 36px !important;
     height: 36px !important;
-    max-height: 36px !important;
-    margin: 2px !important;
+    margin: 0 !important;
     padding: 0 !important;
     align-items: center !important;
     justify-content: center !important;
     box-sizing: border-box !important;
-    float: left !important;
+    transform: scale(1) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    border-radius: 6px !important;
+    cursor: pointer !important;
+    transition: background-color 0.15s ease, transform 0.15s ease !important;
 }
 
-/* 4. ZaDark Reaction Popover Grid (6 Icons per Row) */
+.emoji-list-wrapper .reaction-emoji-icon:not(:has(.clear-react)):hover,
+.message-reaction-container-v2 .emoji-list-wrapper .reaction-emoji-icon:not(:has(.clear-react)):hover {
+    background-color: rgba(255, 255, 255, 0.12) !important;
+    transform: scale(1.15) !important;
+    z-index: 10 !important;
+}
+
+.emoji-list-wrapper .reaction-emoji-icon > span,
+.message-reaction-container-v2 .emoji-list-wrapper .reaction-emoji-icon > span {
+    display: inline-flex !important;
+    position: relative !important;
+    left: 0 !important;
+    top: 0 !important;
+    transform: none !important;
+}
+
+/* 3. ZaDark Reaction Popover Grid */
 .zadark-reaction__popover-content__list {
     display: grid !important;
     grid-template-columns: repeat(6, 34px) !important;
@@ -203,29 +264,113 @@ async function main() {
     align-items: center !important;
     justify-content: center !important;
     margin: 0 !important;
+    transform: scale(1) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
-/* Position adjustment for expanded popover */
-div[style*="position: relative"] > .emoji-list-wrapper.show-elist,
-div[style*="position:relative"] > .emoji-list-wrapper.show-elist {
+/* 4. Position adjustment for expanded popover */
+.emoji-list-wrapper,
+div[style*="position: relative"] > .emoji-list-wrapper,
+div[style*="position:relative"] > .emoji-list-wrapper {
     position: absolute !important;
-    top: -215px !important;
-    left: 0 !important;
-    right: auto !important;
+    transform: none !important;
     z-index: 999999 !important;
 }
 
-.emoji-list-wrapper .clear-react,
-.emoji-list-wrapper .reaction-emoji-icon i.clear-react {
+/* 5. Cancel / Remove Reaction Button (Nút hủy reaction tinh tế, màu Zalo chuẩn, không bị đúp background) */
+.emoji-list-wrapper .reaction-emoji-list > .reaction-emoji-icon:has(.clear-react),
+.emoji-list-wrapper .reaction-emoji-list > .clear-react {
+    grid-column: 1 / -1 !important;
+    order: -1 !important;
+    position: sticky !important;
+    top: -8px !important;
     display: inline-flex !important;
-    width: 36px !important;
-    height: 36px !important;
+    flex-direction: row !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 16px !important;
-    color: #ff4d4f !important;
+    gap: 8px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    margin: 0 0 8px 0 !important;
+    padding: 0 12px !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 16px !important;
+    color: var(--text-secondary, #a6b2c0) !important;
     cursor: pointer !important;
-    border-radius: 6px !important;
+    z-index: 100 !important;
+    backdrop-filter: blur(12px) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+}
+
+.emoji-list-wrapper .reaction-emoji-list > .reaction-emoji-icon:has(.clear-react):hover,
+.emoji-list-wrapper .reaction-emoji-list > .clear-react:hover {
+    background: rgba(239, 68, 68, 0.16) !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+    color: #ff7875 !important;
+    transform: translateY(-1px) !important;
+}
+
+.emoji-list-wrapper .clear-react,
+.emoji-list-wrapper .reaction-emoji-icon i.clear-react,
+.emoji-list-wrapper i.clear-react {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: auto !important;
+    height: auto !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 13px !important;
+    color: var(--icon-secondary, #8c98a6) !important;
+    line-height: 1 !important;
+}
+
+.emoji-list-wrapper .reaction-emoji-list > .reaction-emoji-icon:has(.clear-react):hover i.clear-react,
+.emoji-list-wrapper .reaction-emoji-list > .clear-react:hover i.clear-react {
+    color: #ff7875 !important;
+}
+
+.emoji-list-wrapper .reaction-emoji-icon:has(.clear-react)::after,
+.emoji-list-wrapper .reaction-emoji-list > .clear-react::after {
+    content: "Hủy bày tỏ cảm xúc" !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    color: inherit !important;
+    line-height: 1 !important;
+    letter-spacing: 0.1px !important;
+    white-space: nowrap !important;
+}
+
+/* === AMOLED PITCH BLACK THEME OVERRIDE === */
+body.zadark-amoled,
+body.zadark-amoled #chat-view,
+body.zadark-amoled .chat-message-list,
+body.zadark-amoled .conv-item__unread,
+body.zadark-amoled .chat-input__content,
+body.zadark-amoled #chat-box,
+body.zadark-amoled .main-nav,
+body.zadark-amoled .sidebar {
+    background-color: #000000 !important;
+    color: #e4e6eb !important;
+}
+
+body.zadark-amoled .card,
+body.zadark-amoled .msg-item {
+    background-color: #0a0a0a !important;
+    border-color: #1a1a1a !important;
 }
 `;
 
@@ -238,16 +383,18 @@ div[style*="position:relative"] > .emoji-list-wrapper.show-elist {
         walkCss(fullPath);
       } else if (f.endsWith('.css')) {
         let cssContent = fs.readFileSync(fullPath, 'utf8');
-        if (!cssContent.includes('/* === ZALO 82 EMOJI GRID WINDOWS/LINUX PATCH === */')) {
-          fs.appendFileSync(fullPath, cssOverride, 'utf8');
-          logger.dim(`Injected reaction CSS grid into: ${path.basename(fullPath)}`);
+        if (cssContent.includes('/* === ZALO 82 EMOJI GRID WINDOWS/LINUX PATCH')) {
+          cssContent = cssContent.replace(/\/\* === ZALO 82 EMOJI GRID WINDOWS\/LINUX PATCH[\s\S]*$/, '');
         }
+        cssContent += '\n' + cssOverride;
+        fs.writeFileSync(fullPath, cssContent, 'utf8');
+        logger.dim(`Injected V6 reaction CSS grid into: ${path.basename(fullPath)}`);
       }
     }
   }
 
   walkCss(pcDistDir);
-  logger.success('Completed 82 Emoji Reaction patch');
+  logger.success('Completed 82 Emoji Reaction & Anti-Recall patch for Linux');
 }
 
 if (require.main === module) {

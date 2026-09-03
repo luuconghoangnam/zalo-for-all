@@ -198,6 +198,9 @@ async function extractAppAsar() {
 
   const { main: patchEmojiReactions } = require('./patches/patch-emoji-reactions');
   await patchEmojiReactions();
+
+  const { main: patchPrivacyBlocker } = require('./patches/patch-privacy-blocker');
+  await patchPrivacyBlocker();
 }
 
 function commandExists(command) {
