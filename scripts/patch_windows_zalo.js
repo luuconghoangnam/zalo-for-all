@@ -440,6 +440,14 @@ function patchDirectory(extractedDir) {
             }
           }
 
+          // Image resize fallback: Fallback to original image file instead of throwing IMAGE_LOAD_FAILED
+          const targetCompact = 'const o=new F.ResizeTask({payload:{src:t,width:n,height:a,quality:i,outputFormat:r,destinationPath:s}});we.zsymb(15,"-OPkhV",["offload resize via libvips","GxU_oC"],{src:t});try{const e=await o.run();return we.zsymb(15,"Ik1Zpx",["offload resize via libvips complete","l7Rx5N"],{src:t}),e}catch(e){throw we.zsymb(21,"_qSF1M",["offload resize via libvips fail","GKCd7k"],{src:t,error:e}),e}';
+          const replacementCompact = 'const o=new F.ResizeTask({payload:{src:t,width:n,height:a,quality:i,outputFormat:r,destinationPath:s}});we.zsymb(15,"-OPkhV",["offload resize via libvips","GxU_oC"],{src:t});try{const e=await o.run();return we.zsymb(15,"Ik1Zpx",["offload resize via libvips complete","l7Rx5N"],{src:t}),e}catch(e){if(s){try{require("fs").copyFileSync(t,s);return}catch(_){}}return t}';
+          if (content.includes(targetCompact)) {
+            content = content.replace(targetCompact, () => replacementCompact);
+            patched = true;
+          }
+
           if (patched) {
             fs.writeFileSync(full, content, 'utf8');
             console.log(`[Patch] Patched JS: ${item}`);
@@ -450,6 +458,36 @@ function patchDirectory(extractedDir) {
     }
   }
   walkJs(pcDistDir);
+
+  // 1b. Patch utility-process-media.js (fall back to unresized bytes on failure)
+  const mediaJsPath = path.join(extractedDir, 'main-dist', 'utility-process-media.js');
+  if (fs.existsSync(mediaJsPath)) {
+    let mContent = fs.readFileSync(mediaJsPath, 'utf8');
+    const regex = /try\{const t=await Y\.resizeImage\(c,n,r,i,"image\/jpeg"===o\?"jpeg":"png"\);if\(null==t\)throw [^;]+,new q;if\(s\)try\{await ([^.]+)\.a\.promises\.writeFile\(s,new Uint8Array\(t\)\)\}catch\([^)]+\)\{[^}]+\}\}catch\([^)]+\)\{throw [^;]+,new q\}/;
+    const match = mContent.match(regex);
+    if (match) {
+      const fsObj = match[1];
+      const replacement = `try{let t;try{t=await Y.resizeImage(c,n,r,i,"image/jpeg"===o?"jpeg":"png")}catch(_){t=null}if(null==t){t=c}if(s)try{await ${fsObj}.a.promises.writeFile(s,new Uint8Array(t))}catch(u){}}catch(l){if(s)try{await ${fsObj}.a.promises.writeFile(s,c)}catch(_){}}`;
+      mContent = mContent.replace(match[0], () => replacement);
+      fs.writeFileSync(mediaJsPath, mContent, 'utf8');
+      console.log('[Patch] Fixed utility-process-media.js image resize fallback');
+      jsPatched++;
+    }
+  }
+
+  // 1c. Patch preload-render.js (add clipboard image buffer helpers)
+  const preloadPath = path.join(extractedDir, 'main-dist', 'preload-render.js');
+  if (fs.existsSync(preloadPath)) {
+    let pContent = fs.readFileSync(preloadPath, 'utf8');
+    const origClip = 'getClipboardImage:()=>{const e=r.clipboard.readImage();return{isEmpty:()=>e.isEmpty(),toJPEG:t=>e.toJPEG(t),toPNG:t=>e.toPNG(t)}},';
+    const helperClip = 'getClipboardImage:()=>{const e=r.clipboard.readImage();return{isEmpty:()=>e.isEmpty(),toJPEG:t=>e.toJPEG(t),toPNG:t=>e.toPNG(t)}},getClipboardImagePNG:()=>{let e=r.clipboard.readImage();if(e.isEmpty()){try{const buf=r.clipboard.readBuffer("image/png");if(buf&&buf.length>0)e=r.nativeImage.createFromBuffer(buf)}catch(_){}}if(e.isEmpty())return null;return e.toPNG().toString("base64")},';
+    if (pContent.includes(origClip) && !pContent.includes('getClipboardImagePNG')) {
+      pContent = pContent.replace(origClip, () => helperClip);
+      fs.writeFileSync(preloadPath, pContent, 'utf8');
+      console.log('[Patch] Injected getClipboardImagePNG into preload-render.js');
+      jsPatched++;
+    }
+  }
 
   // 2. Patch CSS files
   let cssPatched = 0;
