@@ -84,8 +84,8 @@ const cssOverride = `
     border-radius: 4px !important;
 }
 
-.emoji-list-wrapper .reaction-emoji-icon,
-.message-reaction-container-v2 .emoji-list-wrapper .reaction-emoji-icon {
+.emoji-list-wrapper .reaction-emoji-icon:not(:has(.clear-react)),
+.message-reaction-container-v2 .emoji-list-wrapper .reaction-emoji-icon:not(:has(.clear-react)) {
     display: flex !important;
     width: 36px !important;
     height: 36px !important;
@@ -102,8 +102,8 @@ const cssOverride = `
     transition: background-color 0.15s ease, transform 0.15s ease !important;
 }
 
-.emoji-list-wrapper .reaction-emoji-icon:hover,
-.message-reaction-container-v2 .emoji-list-wrapper .reaction-emoji-icon:hover {
+.emoji-list-wrapper .reaction-emoji-icon:not(:has(.clear-react)):hover,
+.message-reaction-container-v2 .emoji-list-wrapper .reaction-emoji-icon:not(:has(.clear-react)):hover {
     background-color: rgba(255, 255, 255, 0.12) !important;
     transform: scale(1.15) !important;
     z-index: 10 !important;
@@ -152,62 +152,80 @@ div[style*="position:relative"] > .emoji-list-wrapper {
     z-index: 999999 !important;
 }
 
-/* 5. Cancel / Remove Reaction Button (Dấu X để hủy reaction) */
-.emoji-list-wrapper .reaction-emoji-icon:has(.clear-react),
-.emoji-list-wrapper .reaction-emoji-icon:has(i.clear-react),
-.emoji-list-wrapper .reaction-emoji-list > .clear-react,
-.emoji-list-wrapper .clear-react {
+/* 5. Cancel / Remove Reaction Button (Nút hủy reaction tinh tế, màu Zalo chuẩn, không bị đúp background) */
+.emoji-list-wrapper .reaction-emoji-list > .reaction-emoji-icon:has(.clear-react),
+.emoji-list-wrapper .reaction-emoji-list > .clear-react {
     grid-column: 1 / -1 !important;
     order: -1 !important;
     position: sticky !important;
     top: -8px !important;
-    display: flex !important;
+    display: inline-flex !important;
     flex-direction: row !important;
     align-items: center !important;
     justify-content: center !important;
+    gap: 8px !important;
     width: 100% !important;
-    height: 34px !important;
-    min-height: 34px !important;
-    margin: 0 0 6px 0 !important;
-    background: rgba(255, 77, 79, 0.15) !important;
-    border: 1px dashed rgba(255, 77, 79, 0.5) !important;
-    border-radius: 8px !important;
-    color: #ff4d4f !important;
-    font-size: 13px !important;
-    font-weight: 500 !important;
+    max-width: 100% !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    margin: 0 0 8px 0 !important;
+    padding: 0 12px !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 16px !important;
+    color: var(--text-secondary, #a6b2c0) !important;
     cursor: pointer !important;
-    z-index: 50 !important;
-    backdrop-filter: blur(8px) !important;
-    transition: all 0.15s ease !important;
+    z-index: 100 !important;
+    backdrop-filter: blur(12px) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     box-sizing: border-box !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
 }
 
-.emoji-list-wrapper .reaction-emoji-icon:has(.clear-react):hover,
-.emoji-list-wrapper .reaction-emoji-list > .clear-react:hover,
-.emoji-list-wrapper .clear-react:hover {
-    background: rgba(255, 77, 79, 0.28) !important;
-    border-color: #ff4d4f !important;
+.emoji-list-wrapper .reaction-emoji-list > .reaction-emoji-icon:has(.clear-react):hover,
+.emoji-list-wrapper .reaction-emoji-list > .clear-react:hover {
+    background: rgba(239, 68, 68, 0.16) !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
     color: #ff7875 !important;
-    transform: none !important;
+    transform: translateY(-1px) !important;
 }
 
-.emoji-list-wrapper .clear-react i,
-.emoji-list-wrapper .reaction-emoji-icon i.clear-react {
+.emoji-list-wrapper .clear-react,
+.emoji-list-wrapper .reaction-emoji-icon i.clear-react,
+.emoji-list-wrapper i.clear-react {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 16px !important;
-    color: #ff4d4f !important;
-    margin-right: 6px !important;
+    width: auto !important;
+    height: auto !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    font-size: 13px !important;
+    color: var(--icon-secondary, #8c98a6) !important;
+    line-height: 1 !important;
+}
+
+.emoji-list-wrapper .reaction-emoji-list > .reaction-emoji-icon:has(.clear-react):hover i.clear-react,
+.emoji-list-wrapper .reaction-emoji-list > .clear-react:hover i.clear-react {
+    color: #ff7875 !important;
 }
 
 .emoji-list-wrapper .reaction-emoji-icon:has(.clear-react)::after,
 .emoji-list-wrapper .reaction-emoji-list > .clear-react::after {
-    content: " Hủy bày tỏ cảm xúc" !important;
+    content: "Hủy bày tỏ cảm xúc" !important;
     font-size: 12px !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-    color: #ff7875 !important;
     font-weight: 500 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+    color: inherit !important;
+    line-height: 1 !important;
+    letter-spacing: 0.1px !important;
+    white-space: nowrap !important;
 }
 
 /* === AMOLED PITCH BLACK THEME OVERRIDE === */
