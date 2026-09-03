@@ -114,40 +114,41 @@ async function main() {
   const cssOverride = `
 /* === ZALO 82 EMOJI GRID WINDOWS/LINUX PATCH === */
 
-/* Reset animation for icons to load immediately */
-.reaction-emoji-icon,
+/* 1. Reset animation and opacity for reaction popup icons */
+.emoji-list-wrapper .reaction-emoji-icon,
 .zadark-reaction__emoji {
     animation: none !important;
     animation-delay: 0ms !important;
     transition: none !important;
-    transform: none !important;
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
-/* Base Wrapper styles */
-.emoji-list-wrapper,
-.emoji-list-wrapper.show-elist,
-.emoji-list-wrapper.hide-elist,
-.emoji-list-wrapper.top-less,
-.emoji-list-wrapper.show-on-top {
-    display: block !important;
-    width: max-content !important;
-    height: auto !important;
-    white-space: normal !important;
-}
-
-/* Component A: Quick Hover Bar (Horizontal) */
-.emoji-list-wrapper:not(.show-elist) .reaction-emoji-list,
-.message-reaction-container-v2:not(.show-elist) .reaction-emoji-list {
+/* 2. Quick Reaction Hover Bar (Single Horizontal Line of 6 Icons) */
+.emoji-list-wrapper:not(.show-elist) .reaction-emoji-list {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
+    align-items: center !important;
     width: auto !important;
     max-width: none !important;
+    height: 36px !important;
+    border-radius: 20px !important;
+    padding: 0 6px !important;
+    overflow: visible !important;
 }
 
-/* Component B: Expanded Grid (6 icons per row) */
-.emoji-list-wrapper.show-elist .reaction-emoji-list,
-.reaction-emoji-list.show-elist {
+.emoji-list-wrapper:not(.show-elist) .reaction-emoji-icon {
+    display: inline-flex !important;
+    flex: 0 0 24px !important;
+    width: 24px !important;
+    height: 24px !important;
+    margin: 0 3px !important;
+    position: relative !important;
+}
+
+/* 3. Expanded Reaction Grid (6 Icons per Row) */
+.emoji-list-wrapper.show-elist .reaction-emoji-list {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: wrap !important;
@@ -168,52 +169,57 @@ async function main() {
     box-sizing: border-box !important;
 }
 
-/* Expanded Grid Icons */
-.emoji-list-wrapper.show-elist .reaction-emoji-icon,
-.reaction-emoji-list.show-elist .reaction-emoji-icon {
-    display: flex !important;
-    width: 32px !important;
-    height: 32px !important;
+.emoji-list-wrapper.show-elist .reaction-emoji-icon {
+    display: inline-flex !important;
+    flex: 0 0 36px !important;
+    width: 36px !important;
+    max-width: 36px !important;
+    height: 36px !important;
+    max-height: 36px !important;
     margin: 2px !important;
+    padding: 0 !important;
     align-items: center !important;
     justify-content: center !important;
+    box-sizing: border-box !important;
+    float: left !important;
 }
 
-/* Component C: ZaDark Custom Popover (Hide it since Zalo native already has 82 icons) */
-body.zadark .zadark-reaction {
-    display: none !important;
+/* 4. ZaDark Reaction Popover Grid (6 Icons per Row) */
+.zadark-reaction__popover-content__list {
+    display: grid !important;
+    grid-template-columns: repeat(6, 34px) !important;
+    gap: 2px !important;
+    width: 224px !important;
+    max-height: 180px !important;
+    overflow-y: auto !important;
+    padding: 4px !important;
+    box-sizing: border-box !important;
 }
 
+.zadark-reaction__emoji {
+    display: flex !important;
+    width: 34px !important;
+    height: 34px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+}
 
-/* Position adjustment for native popover */
-div[style*="position: relative"] > .emoji-list-wrapper,
-div[style*="position:relative"] > .emoji-list-wrapper {
+/* Position adjustment for expanded popover */
+div[style*="position: relative"] > .emoji-list-wrapper.show-elist,
+div[style*="position:relative"] > .emoji-list-wrapper.show-elist {
     position: absolute !important;
     top: -215px !important;
     left: 0 !important;
     right: auto !important;
-    transform: none !important;
     z-index: 999999 !important;
-}
-
-div[style*="position: relative"] > .emoji-list-wrapper.me,
-div[style*="position:relative"] > .emoji-list-wrapper.me {
-    left: auto !important;
-    right: 0 !important;
-    transform: none !important;
-}
-
-.chat-item,
-.msg-item,
-.msg-reaction-container {
-    overflow: visible !important;
 }
 
 .emoji-list-wrapper .clear-react,
 .emoji-list-wrapper .reaction-emoji-icon i.clear-react {
     display: inline-flex !important;
-    width: 32px !important;
-    height: 32px !important;
+    width: 36px !important;
+    height: 36px !important;
     align-items: center !important;
     justify-content: center !important;
     font-size: 16px !important;

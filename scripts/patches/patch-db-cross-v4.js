@@ -60,22 +60,19 @@ async function main() {
 
     // PLATFORM ID PATCH
     // ---------------------------------------------------------------
-    // Switching the platform ID from 25 to another ID is required to
-    // make the patch's features work. The only observed difference
-    // is how Zalo's tray icon behaves:
-    //
-    //   25 → 23 (macOS)   ← currently used
-    //       Zalo's tray icon does not appear, so only our own icon
-    //       is shown.
-    //
-    //   25 → 24 (Windows)
-    //       Zalo's tray icon also appears alongside ours, but the
-    //       actual Zalo logo is missing — it shows a default/blank
-    //       icon. Result: two tray icons, with the Zalo one looking
-    //       wrong.
+    // Return 24 (WIN32) on Linux to match Windows native Zalo.
+    // This allows dual-boot machines to share the same session/token/IMEI
+    // without the server revoking the login due to platform switching.
     // ---------------------------------------------------------------
-    // Keep platform ID 25 (Linux) to prevent macOS codesign/keychain errors and re-login stalls.
-    logger.dim('Keeping native Linux platform ID (25)');
+    if (content.includes('case"LINUX":return 25;')) {
+      content = content.replace('case"LINUX":return 25;', 'case"LINUX":return 24;');
+      fs.writeFileSync(mainJsPath, content, 'utf8');
+      logger.success('Patched getClientType() on Linux to return 24 (WIN32)');
+    } else if (content.includes('case"LINUX":return 24;')) {
+      logger.dim('Platform ID is already 24 (WIN32)');
+    } else {
+      logger.warn('Could not locate getClientType() pattern in main.js');
+    }
   }
 
   logger.success('db-cross-v4 built and installed');
